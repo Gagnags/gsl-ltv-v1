@@ -1,0 +1,241 @@
+GSL LTV Prediction — Chart‑First Dual‑Path UX (Frontend‑Only, Replit)
+
+Guardrails
+	•	Keep current GSL design system (tokens, components, dark theme) and existing navigation.
+	•	Do not change product IA. LTV Prediction remains a separate nav section.
+	•	Frontend only. Use mock adapters where needed.
+	•	Goal: add a two‑tier experience that makes LTV usable in 1–2 clicks for most PMs while preserving the full advanced workflow.
+
+⸻
+
+1) Executive Summary (What changes)
+	•	New chart‑first landing at /ltv for Quick Insight PMs:
+	•	A single, interactive LTV Trends chart with Overall/Payer toggle, 14/30/60d ranges, confidence bands, and basic filters (Platform, Geo, Tenure, Game Rank).
+	•	Same charting pattern as existing Explore “Active Users Trends” to reduce new surface area.
+	•	Secondary section “Advanced LTV Builder” is present but collapsed by default (progressive disclosure).
+	•	Advanced flow preserved at /ltv/advanced:
+	•	Contains the current Overview → Builder → Results → Performance workflow unchanged in depth, just routed behind the “advanced” entry.
+	•	Results pages become chart‑first:
+	•	Replace prominent static cards with the interactive chart (same component as landing) + confidence bands.
+	•	Drivers, cohort comparisons, and exports move to secondary panels.
+	•	Removed from UI (simple path): Quick templates, “Run with smart defaults,” “Quick LTV,” and basic multi‑step wizards. (Advanced path remains intact.)
+
+⸻
+
+2) Routes, Pages, and Entry Points
+
+2.1 Route Map (add/modify only; keep all others)
+	•	GET /ltv → LTV Landing (Simple) — chart‑first, filters, collapsed Advanced block.
+	•	GET /ltv/advanced → Advanced Overview (existing list of runs + “New Prediction”).
+	•	GET /ltv/run/:id → Results (chart‑first).
+	•	GET /ltv/performance → Performance (unchanged; linked from advanced).
+
+Deep link behavior:
+	•	Home/Activity Feed items that reference completed LTV runs should open /ltv/run/:id.
+	•	If you already deep‑link from Home, retain it. No change needed to Home IA.
+
+⸻
+
+3) Page Specifications (exact structure & interactions)
+
+3.1 /ltv — LTV Landing (Simple)
+
+Layout (top → bottom):
+	1.	Header Row
+	•	Title: “LTV Prediction”
+	•	Right‑aligned actions: Refresh (secondary), Go to Advanced (link → /ltv/advanced)
+	2.	LTV Trends (primary chart block)
+	•	Chart: Reuse Explore line/area chart pattern.
+	•	Toggles (inline):
+	•	Metric: Overall LTV | Payer LTV (single‑select)
+	•	Range: 14d | 30d | 60d (single‑select)
+	•	Confidence: shaded band around the series.
+	•	Filters Panel (sticky row under chart controls):
+	•	Platform (iOS, Android, All)
+	•	Geo (Region/Country multiselect)
+	•	User Tenure (New <7d, 7–30d, >30d)
+	•	Game Rank (Top 10%, 10–50%, 50%+ or your in‑product ranking buckets)
+	•	Multi‑metric toggle (optional switch): “Combine with”, showing a small plus menu to overlay DAU, ARPU, or Retention D30 for context (same axes, secondary legend).
+	3.	Advanced LTV Builder (collapsed card)
+	•	Collapsed by default. Title: “Build Custom LTV Prediction (Advanced)”
+	•	Description: “Define cohorts, horizons, and inputs. Full results and performance views.”
+	•	Expand action reveals a brief description + Open Advanced (routes to /ltv/advanced).
+
+States:
+	•	Loading: chart skeleton, disabled toggles/filters.
+	•	Error: inline banner w/ “Retry”.
+	•	Empty: “No LTV data for selected filters” + reset filters action.
+
+Telemetry notes (frontend only):
+	•	Track toggle/filters changes and “Open Advanced” clicks (existing analytics if available).
+
+⸻
+
+3.2 /ltv/advanced — Advanced Overview (keep your existing screen)
+	•	No structural change beyond:
+	•	Add a top left link back to Simple: “◀ LTV Snapshot” → /ltv.
+	•	Ensure list of runs, New Prediction, and filters behave as they do today.
+
+⸻
+
+3.3 /ltv/run/:id — Results (chart‑first)
+
+Layout (two‑column)
+	•	Left (60%) — Primary
+	•	LTV Trends chart (same component as landing), preloaded to:
+	•	Series: the selected run’s Predicted LTV (P50) with confidence band
+	•	Range default: 30d (respect user’s last selection if stored)
+	•	Metric toggle (Overall/Payer) remains (if the run contains both series; otherwise hide)
+	•	Combine with menu available (DAU/ARPU/Retention) for context
+	•	Secondary row (under chart): Cohort size & data freshness badges
+	•	Right (40%) — Secondary Panels
+	•	Key Drivers list (3–5), click to filter chart overlay with the affected subpopulation (client‑side lens ok)
+	•	Cohort Comparison (expandable): mini‑table of 1–2 reference cohorts vs this run (Predicted LTV, Actual‑to‑date, Retention)
+	•	Exports/Actions: Download CSV, “Create cohort from predictedLtv{horizon} ≥ X”, “Duplicate config”
+
+States:
+	•	If drivers are unavailable: show “No drivers available for this run.”
+	•	If comparison not configured: show link “Pick comparison cohorts” (opens the selection drawer; client‑side mock acceptable).
+
+No change to underlying advanced results data model—only the arrangement and default focus.
+
+⸻
+
+3.4 /ltv/performance — Model Performance (unchanged IA)
+	•	Keep existing tabs (Backtests, Drift, Reports).
+	•	Optional: add a top left link back to Simple “◀ LTV Snapshot” → /ltv.
+
+⸻
+
+4) Component Reuse & Adjustments (no new visual language)
+
+Reuse existing atoms (Card, Tabs, Tooltip, Badge, Drawer, Table, Button).
+Charts: Use the same Explore chart component and props where possible to minimize net-new work.
+
+4.1 Components to (Re)Use
+	•	Line/Area Chart (from Explore “Active Users Trends”)
+	•	Add confidence band support (simple upper/lower arrays in series).
+	•	Allow overlay series (DAU, ARPU, Retention) via existing multi‑series API.
+	•	Filter Row pattern (chips/dropdowns) from Explore.
+	•	Drivers Panel, Cohort Comparison Table, Export Buttons: reuse from current Results; just reorder to the right column.
+
+4.2 New Small UI Bits (follow GSL styles)
+	•	Metric Toggle (Overall vs Payer) → segmented control
+	•	Range Toggle (14d/30d/60d) → segmented control
+	•	Confidence Band (chart) → shaded area between upper/lower series (use existing token for subtle fill)
+
+⸻
+
+5) Progressive Disclosure Rules
+	•	On /ltv: show only the chart, filters, and collapsed “Advanced LTV Builder” card.
+	•	No templates / “Run with defaults” / “Quick LTV” anywhere on the simple path.
+	•	Advanced users explicitly click through to /ltv/advanced to access the full builder/results/performance workflow.
+
+⸻
+
+6) State, Data & Mocking (front‑end only)
+
+6.1 Simple Landing Data Contract (mock‑able)
+	•	GET /ltv/simple/series?metric={overall|payer}&range={14|30|60}&platform=&geo=&tenure=&rank=&overlay=[]
+	•	Returns { series: [{name, points:[{t, y}], ciUpper?:[], ciLower?:[]}], lastUpdated }
+	•	If overlay is present (e.g., overlay=arpu,retention), include additional named series.
+
+6.2 Results Page Data Contract (reuse existing + chart series)
+	•	GET /ltv/runs/:id (current)
+	•	Extend or map to chart props:
+	•	summary.p50, summary.ci, summary.cohortSize, summary.freshness
+	•	chart.series (primary LTV + ciUpper/ciLower)
+	•	drivers[]
+	•	comparison[] (optional; can be separately fetched)
+
+If these endpoints do not exist, add front‑end mocks that produce deterministic series and drivers from /mock/ltv.ts without changing component contracts.
+
+6.3 Local State
+	•	Persist last used metric and range in localStorage key ltv.simple.prefs.
+	•	Results page may also respect ltv.simple.prefs for continuity.
+
+⸻
+
+7) Implementation Steps (copy‑pasteable checklist)
+	1.	Routing
+	•	Add route /ltv → LtvSimplePage
+	•	Add route /ltv/advanced → LtvAdvancedOverviewPage (existing Overview component)
+	•	Keep /ltv/run/:id and /ltv/performance as is.
+	•	Add “◀ LTV Snapshot” link on Advanced pages back to /ltv.
+	2.	Create LtvSimplePage
+	•	Header row with title + actions (Refresh, Go to Advanced).
+	•	Chart block using Explore chart component
+	•	Props: primary LTV series + ciUpper/ciLower
+	•	Controls: Metric (Overall/Payer), Range (14/30/60), Overlay selector (optional), Confidence band toggle (on by default)
+	•	Filters row with Platform, Geo, Tenure, Rank (use existing filter controls from Explore)
+	•	Collapsed Card: “Build Custom LTV Prediction (Advanced)” → button Open Advanced routes to /ltv/advanced
+	•	Loading/Error/Empty states per GSL patterns
+	3.	Refactor Results Layout (/ltv/run/:id)
+	•	Make the chart block the first element in the left column; include confidence band
+	•	Move Key Drivers, Cohort Comparison, Exports into right column panels
+	•	Keep all existing actions (Duplicate, Delete, Export, Create Cohort) intact and visible within the right column
+	4.	Remove simple‑path clutter
+	•	Ensure no quick templates, no “run with defaults”, no basic wizards appear on /ltv
+	•	Keep these tools available only behind /ltv/advanced if they exist there today
+	5.	Data plumbing
+	•	Add a simple adapter in /mock/ltv.ts that:
+	•	Returns 14/30/60d LTV series with ciUpper/ciLower
+	•	Supports overlay series (DAU/ARPU/Retention) with compatible scaling and legend names
+	•	Wire the Results page to use the same chart component, using run data → chart props mapping
+	6.	Persistence
+	•	On /ltv metric/range change, store {metric, range} to localStorage.ltv.simple.prefs.
+	•	On /ltv/run/:id mount, if range not specified by run, apply ltv.simple.prefs defaults.
+	7.	QA hooks
+	•	Add data-testid attributes to: ltv-simple-chart, ltv-simple-filters, ltv-advanced-card, ltv-results-chart, ltv-results-drivers.
+
+⸻
+
+8) User Flows (end‑to‑end)
+
+Quick Insight PM
+	1.	Nav → LTV Prediction (lands on /ltv)
+	2.	Sees chart; toggles Overall/Payer; switches 14/30/60d; applies Platform/Geo/Tenure/Rank filters
+	3.	(Optional) Overlays DAU to check correlation; reviews confidence band
+	4.	If deeper work needed → clicks Open Advanced to reach /ltv/advanced (explicit intent)
+
+Data‑Driven PM
+	1.	Nav → LTV Prediction → clicks Open Advanced
+	2.	Works in Overview → Builder → Results → Performance (unchanged depth)
+	3.	From Results, still gets chart‑first view, drivers, comparisons, exports
+
+⸻
+
+9) Acceptance Criteria (Done = UI ready to ship, with mocks)
+	•	/ltv loads in <2s with mock series, shows interactive chart + filters; confidence band rendered by default.
+	•	Advanced block collapsed by default; expands only on click; “Open Advanced” routes correctly.
+	•	/ltv/run/:id shows chart‑first; drivers/comparisons/exports in right column; all existing actions functional.
+	•	Global styling consistent with GSL theme; no new tokens added.
+	•	No quick templates/default wizards on /ltv.
+	•	Local preferences (metric/range) remembered across visits.
+	•	All states (Loading/Error/Empty) implemented.
+	•	Keyboard focus & tooltips work on chart controls; chart legend toggles behave like Explore.
+
+⸻
+
+10) Implementation Notes for Replit Agent
+	•	Do not introduce new design tokens. Consume existing spacing, color, radius, and typography.
+	•	Favor existing Explore chart; only extend to support confidence band and overlay series.
+	•	Keep current advanced code paths intact; you’re adding /ltv and modestly re‑arranging Results.
+	•	All new data calls can be served from /mock/ltv.ts with stable, deterministic series for demo & tests.
+
+⸻
+
+11) Test Plan (frontend only)
+	•	Routing: /ltv, /ltv/advanced, /ltv/run/:id render correct layouts.
+	•	Chart interactions: toggles update series; overlays appear/hide; confidence band visible.
+	•	Filters: each filter refines series (mocked); reset clears correctly.
+	•	Persistence: switch range to 60d on /ltv; navigate away; return → 60d persists.
+	•	Results layout: chart renders first; drivers filter the series lens; exports trigger downloads (mock).
+	•	A11y: focusable controls; tooltips accessible; contrast meets theme standards.
+	•	No simple‑path clutter: verify absence of templates/quick‑defaults on /ltv.
+
+⸻
+
+Final Notes
+
+This plan keeps the product’s high‑level structure and GSL’s visual language, while making LTV immediately useful to the 80% of PMs. The advanced path remains untouched behind an explicit /ltv/advanced entry, and all changes are frontend‑only with mockable data contracts for rapid integration.

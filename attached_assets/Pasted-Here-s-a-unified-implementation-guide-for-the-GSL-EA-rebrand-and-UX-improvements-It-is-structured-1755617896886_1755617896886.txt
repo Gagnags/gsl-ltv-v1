@@ -1,0 +1,197 @@
+Here’s a unified implementation guide for the GSL → EA rebrand and UX improvements. It is structured as a dev-facing specification with explicit, copy-pasteable changes across components, routes, and layouts. All instructions assume React + Replit context, following the existing GSL design system.
+
+⸻
+
+GSL Platform Rebrand and UX Improvements Implementation Guide
+
+⸻
+
+1. Support System Replacement
+
+Remove:
+	•	Delete InsightCopilot component from src/components/Sidebar and any references in /pages/_app.tsx or /pages/home.tsx.
+
+Add: SupportSystem component (new).
+Path: src/components/SupportSystem.tsx
+
+Features:
+	•	Ticket creation form with fields: issueType, priority, description.
+	•	FAQ / Help Docs link section.
+	•	Support status list.
+
+// src/components/SupportSystem.tsx
+import { Card, Button, Input, Textarea, Select } from "@/components/ui";
+
+export default function SupportSystem() {
+  return (
+    <Card className="p-4">
+      <h2 className="text-lg font-semibold">Support</h2>
+      <Select placeholder="Issue Type" options={["Bug", "Question", "Feature Request"]}/>
+      <Select placeholder="Priority" options={["Low", "Medium", "High"]}/>
+      <Textarea placeholder="Describe your issue..." />
+      <Button className="mt-2">Create Ticket</Button>
+      <div className="mt-4">
+        <h3 className="text-sm font-medium">My Tickets</h3>
+        {/* Mock ticket status */}
+        <ul>
+          <li>#123 – Open – Investigating</li>
+          <li>#122 – Closed – Fixed in v0.7</li>
+        </ul>
+      </div>
+      <div className="mt-4">
+        <a href="/help" className="text-blue-400">Help Documentation</a>
+      </div>
+    </Card>
+  );
+}
+
+Integrate in nav: replace Copilot entry with Support (placeholder route /support).
+
+⸻
+
+2. LTV Results Page Redesign
+
+File: /src/pages/ltv/run/[id].tsx
+
+Changes:
+	•	Replace summary cards grid with InteractiveChart (reuse component from /ltv/index.tsx).
+	•	Move “Key Drivers” into right-hand sidebar.
+	•	Ensure “Export” and “Create Cohort” buttons remain at top-right.
+
+// Pseudo layout
+<div className="flex">
+  <main className="flex-1">
+    <InteractiveChart metric="ltv" withConfidence withOverlays />
+  </main>
+  <aside className="w-80 p-4 border-l">
+    <KeyDrivers drivers={drivers} />
+  </aside>
+</div>
+
+Outcome: Chart-first focus; drivers secondary; consistent with /ltv overview.
+
+⸻
+
+3. Platform Branding Updates
+
+File: src/components/Sidebar/Header.tsx
+
+// Replace text
+<div className="flex items-center space-x-2">
+  <LogoGSL />
+  <div>
+    <div className="text-white font-bold">Electronic Arts</div>
+    <div className="text-gray-400 text-xs">FC25</div>
+  </div>
+</div>
+
+Logo asset unchanged.
+
+⸻
+
+4. Navigation Label Updates
+
+File: src/components/Sidebar/Nav.tsx
+
+// Replace labels
+{ name: "Home", path: "/home" } → { name: "Overview", path: "/home" }
+{ name: "LTV Prediction", path: "/ltv" } → { name: "LTV", path: "/ltv" }
+
+Update corresponding <PageHeader> in src/pages/home.tsx and src/pages/ltv/index.tsx.
+
+⸻
+
+5. Navigation Structure Expansion
+
+Insert placeholders after Explore:
+
+{ name: "Custom SQL Query", path: "/sql-query" },
+{ name: "Funnels", path: "#" },
+{ name: "Settings", path: "#" },
+{ name: "Integrated Games", path: "#" },
+{ name: "Data Layer", path: "#" },
+{ name: "User Profile", path: "#" },
+
+
+⸻
+
+6. New Custom SQL Query Section
+
+Route: /sql-query
+File: src/pages/sql-query.tsx
+
+Layout: Split 50/50 editor + results.
+
+import { useState } from "react";
+import { Button, Card } from "@/components/ui";
+import Editor from "@monaco-editor/react";
+
+export default function SQLQueryPage() {
+  const [query, setQuery] = useState("SELECT * FROM player_events LIMIT 10;");
+  const [result, setResult] = useState<any[]>([]);
+
+  const runQuery = () => {
+    // mock exec
+    setResult([{ playerId: 1, sessionCount: 12 }, { playerId: 2, sessionCount: 8 }]);
+  };
+
+  return (
+    <div className="flex h-full">
+      <div className="w-1/2 p-4">
+        <Card>
+          <h2 className="font-semibold">SQL Editor</h2>
+          <Editor
+            height="400px"
+            defaultLanguage="sql"
+            value={query}
+            onChange={(val) => setQuery(val || "")}
+          />
+          <Button onClick={runQuery}>Run Query</Button>
+        </Card>
+      </div>
+      <div className="w-1/2 p-4">
+        <Card>
+          <h2 className="font-semibold">Results</h2>
+          <pre>{JSON.stringify(result, null, 2)}</pre>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+Enhancements:
+	•	Add schema sidebar (/schemas/player_events.json).
+	•	Chart toggle: reuse existing chart components (Bar/Line/Heatmap).
+	•	Export buttons (CSV/PNG).
+
+⸻
+
+7. Final Navigation Order
+
+[
+  "Overview",
+  "Explore",
+  "Custom SQL Query",
+  "Cohorts",
+  "Funnels",
+  "LTV",
+  "Players",
+  "Settings",
+  "Integrated Games",
+  "Data Layer",
+  "User Profile"
+]
+
+
+⸻
+
+✅ With these changes:
+	•	Copilot → Support system
+	•	LTV run pages are chart-first and aligned with Overview
+	•	Sidebar shows EA branding + FC25
+	•	Nav labels updated and placeholders added
+	•	New SQL query interface available under /sql-query
+
+⸻
+
+Would you like me to also provide a migration checklist (step-by-step dev tasks ordered by priority) so the engineering team can implement these changes in sprints?
