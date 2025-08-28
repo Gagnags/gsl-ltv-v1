@@ -1,336 +1,393 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   TrendingUp, 
-  TrendingDown,
+  Users, 
   DollarSign,
-  Users,
-  Target,
-  BarChart3,
-  LineChart,
+  Calendar,
   Download,
-  Share,
-  Zap
+  Share2,
+  Eye,
+  BarChart3
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 
-interface LTVPrediction {
+interface PredictionResult {
   id: string;
   name: string;
   cohortSize: number;
-  predictedLTV90d: number;
+  predictedLTV: number;
   confidence: number;
-  status: string;
   lastUpdated: string;
-  uplift: string;
-  topDrivers: string[];
+  status: "completed" | "running" | "failed";
 }
 
-interface LTVResultsProps {
-  predictions: LTVPrediction[];
-}
-
-const performanceMetrics = {
-  totalRevenue: 2847650,
-  avgLTV: 4.87,
-  topPerformingChannel: "Facebook Ads",
-  riskCohorts: 3,
-  confidenceScore: 0.87
+// Mock data for the 4 charts based on the notebook
+const generateChartData = (days: number) => {
+  const data = [];
+  for (let i = 0; i < days; i++) {
+    data.push({
+      day: i + 1,
+      cumulativeLTV: 2.5 + (i * 0.8) + (Math.random() * 0.3),
+      ciUpper: 2.5 + (i * 0.8) + (Math.random() * 0.3) + (0.5 + i * 0.1),
+      ciLower: 2.5 + (i * 0.8) + (Math.random() * 0.3) - (0.5 + i * 0.1),
+      survivalProb: Math.max(0.1, 1 - (i * 0.02) - (Math.random() * 0.05)),
+      dailyRevenue: 0.8 + (Math.random() * 0.4),
+      incrementalLTV: 0.8 + (Math.random() * 0.3)
+    });
+  }
+  return data;
 };
 
-const driverAnalysis = [
+const samplePredictions: PredictionResult[] = [
   {
-    driver: "tutorial_complete",
-    impact: 0.34,
-    direction: "positive",
-    description: "Players completing tutorial show +34% higher LTV"
+    id: "1",
+    name: "US Facebook High-Value Prospects",
+    cohortSize: 12500,
+    predictedLTV: 4.87,
+    confidence: 0.82,
+    lastUpdated: "2 hours ago",
+    status: "completed"
   },
   {
-    driver: "first_purchase_d3", 
-    impact: 0.67,
-    direction: "positive",
-    description: "First purchase within 3 days increases LTV by +67%"
+    id: "2", 
+    name: "Tutorial Completers Cohort",
+    cohortSize: 8900,
+    predictedLTV: 3.24,
+    confidence: 0.78,
+    lastUpdated: "4 hours ago",
+    status: "completed"
   },
   {
-    driver: "session_gap_d7",
-    impact: -0.23,
-    direction: "negative", 
-    description: "Session gaps over 7 days reduce LTV by -23%"
-  },
-  {
-    driver: "social_connect",
-    impact: 0.19,
-    direction: "positive",
-    description: "Social connection increases LTV by +19%"
-  },
-  {
-    driver: "support_ticket_d1",
-    impact: -0.41,
-    direction: "negative",
-    description: "Support tickets on Day 1 reduce LTV by -41%"
+    id: "3",
+    name: "Level 12 Stuck Players",
+    cohortSize: 3400,
+    predictedLTV: 2.15,
+    confidence: 0.71,
+    lastUpdated: "6 hours ago",
+    status: "completed"
   }
 ];
 
-export const LTVResults = ({ predictions }: LTVResultsProps) => {
-  const [selectedPrediction, setSelectedPrediction] = useState<LTVPrediction | null>(
-    predictions[0] || null
-  );
+export function LTVResults({ predictions = samplePredictions }: { predictions?: PredictionResult[] }) {
+  const [selectedPrediction, setSelectedPrediction] = useState<string>("1");
+  const [chartRange, setChartRange] = useState<string>("7");
+  
+  const selectedPred = predictions.find(p => p.id === selectedPrediction);
+  const chartData = generateChartData(parseInt(chartRange));
 
-  const getUpliftColor = (uplift: string) => {
-    if (uplift.startsWith('+')) return 'text-green-600';
-    if (uplift.startsWith('-')) return 'text-red-600';
-    return 'text-muted-foreground';
-  };
-
-  const getUpliftVariant = (uplift: string) => {
-    if (uplift.startsWith('+')) return 'secondary';
-    if (uplift.startsWith('-')) return 'destructive';
-    return 'outline';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-500/20 text-green-700 border-green-500/30";
+      case "running":
+        return "bg-blue-500/20 text-blue-700 border-blue-500/30";
+      case "failed":
+        return "bg-red-500/20 text-red-700 border-red-500/30";
+      default:
+        return "bg-gray-500/20 text-gray-700 border-gray-500/30";
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div>
+        <h2 className="text-2xl font-bold">Results Dashboard</h2>
+        <p className="text-muted-foreground">
+          View LTV prediction results and forecasts for your cohorts
+        </p>
+      </div>
+
+      {/* Prediction Selection & Controls */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Select value={selectedPrediction} onValueChange={setSelectedPrediction}>
+            <SelectTrigger className="w-80">
+              <SelectValue placeholder="Select prediction to view" />
+            </SelectTrigger>
+            <SelectContent>
+              {predictions.map((pred) => (
+                <SelectItem key={pred.id} value={pred.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{pred.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {pred.cohortSize.toLocaleString()} users • {pred.lastUpdated}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={chartRange} onValueChange={setChartRange}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 days</SelectItem>
+              <SelectItem value="14">14 days</SelectItem>
+              <SelectItem value="30">30 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" size="sm">
+            <Share2 className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        </div>
+      </div>
+
+      {/* Selected Prediction Summary */}
+      {selectedPred && (
         <Card>
-          <CardContent className="p-4">
+          <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Predicted Revenue</p>
-                <p className="text-lg font-bold">${(performanceMetrics.totalRevenue / 1000000).toFixed(1)}M</p>
+                <CardTitle className="text-xl">{selectedPred.name}</CardTitle>
+                <CardDescription>
+                  LTV prediction results and analysis
+                </CardDescription>
               </div>
-              <DollarSign className="w-5 h-5 text-primary" />
+              <Badge className={getStatusColor(selectedPred.status)}>
+                {selectedPred.status}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {selectedPred.cohortSize.toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">Cohort Size</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  ${selectedPred.predictedLTV}
+                </div>
+                <div className="text-sm text-muted-foreground">Predicted LTV</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.round(selectedPred.confidence * 100)}%
+                </div>
+                <div className="text-sm text-muted-foreground">Confidence</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {chartRange}
+                </div>
+                <div className="text-sm text-muted-foreground">Day Range</div>
+              </div>
             </div>
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg LTV</p>
-                <p className="text-lg font-bold">${performanceMetrics.avgLTV}</p>
-              </div>
-              <Target className="w-5 h-5 text-primary" />
-            </div>
+      {/* 4-Chart Visualization Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Chart 1: Cumulative LTV Forecast */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Cumulative LTV Forecast
+            </CardTitle>
+            <CardDescription>
+              Predicted cumulative LTV over time with confidence intervals
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="day" 
+                  label={{ value: 'Days', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  label={{ value: 'LTV ($)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'LTV']}
+                  labelFormatter={(label) => `Day ${label}`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ciUpper"
+                  stackId="1"
+                  stroke="#f97316"
+                  fill="#f97316"
+                  fillOpacity={0.1}
+                  strokeWidth={0}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ciLower"
+                  stackId="1"
+                  stroke="#f97316"
+                  fill="#f97316"
+                  fillOpacity={0.1}
+                  strokeWidth={0}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="cumulativeLTV"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
+        {/* Chart 2: Survival Probability */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Top Channel</p>
-                <p className="text-lg font-bold text-green-600">Facebook</p>
-              </div>
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            </div>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Survival Probability
+            </CardTitle>
+            <CardDescription>
+              Probability of user retention over time
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis domain={[0, 1]} />
+                <Tooltip 
+                  formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'Survival']}
+                  labelFormatter={(label) => `Day ${label}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="survivalProb"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  dot={{ fill: '#10b981', strokeWidth: 2, r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
+        {/* Chart 3: Daily Expected Revenue */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Risk Cohorts</p>
-                <p className="text-lg font-bold text-red-600">{performanceMetrics.riskCohorts}</p>
-              </div>
-              <TrendingDown className="w-5 h-5 text-red-600" />
-            </div>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Daily Expected Revenue
+            </CardTitle>
+            <CardDescription>
+              Expected daily revenue per user
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
+                  labelFormatter={(label) => `Day ${label}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="dailyRevenue"
+                  stroke="#f59e0b"
+                  strokeWidth={3}
+                  dot={{ fill: '#f59e0b', strokeWidth: 2, r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
+        {/* Chart 4: Daily Incremental LTV */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Confidence</p>
-                <p className="text-lg font-bold">{Math.round(performanceMetrics.confidenceScore * 100)}%</p>
-              </div>
-              <Zap className="w-5 h-5 text-primary" />
-            </div>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Daily Incremental LTV
+            </CardTitle>
+            <CardDescription>
+              Daily contribution to total LTV
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Incremental']}
+                  labelFormatter={(label) => `Day ${label}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="incrementalLTV"
+                  stroke="#8b5cf6"
+                  strokeWidth={3}
+                  dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="predictions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="predictions">Predictions</TabsTrigger>
-          <TabsTrigger value="drivers">Value Drivers</TabsTrigger>
-          <TabsTrigger value="comparison">Cohort Comparison</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="predictions" className="space-y-6">
-          {/* Predictions Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>LTV Predictions Results</CardTitle>
-                  <CardDescription>Performance summary for all active predictions</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Share className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {predictions.map((prediction) => (
-                  <div 
-                    key={prediction.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedPrediction?.id === prediction.id 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:bg-accent/50'
-                    }`}
-                    onClick={() => setSelectedPrediction(prediction)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <h4 className="font-medium text-foreground">{prediction.name}</h4>
-                          <div className="flex items-center gap-4 mt-1">
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Users className="w-3 h-3" />
-                              {prediction.cohortSize.toLocaleString()} players
-                            </div>
-                            <span className="text-xs text-muted-foreground">•</span>
-                            <span className="text-xs text-muted-foreground">{prediction.lastUpdated}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-6">
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground">Predicted LTV</p>
-                          <p className="text-lg font-bold text-foreground">${prediction.predictedLTV90d}</p>
-                        </div>
-
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground">Confidence</p>
-                          <div className="flex items-center gap-2">
-                            <Progress value={prediction.confidence * 100} className="w-16 h-2" />
-                            <span className="text-sm font-medium">{Math.round(prediction.confidence * 100)}%</span>
-                          </div>
-                        </div>
-
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground">vs Baseline</p>
-                          <Badge variant={getUpliftVariant(prediction.uplift)}>
-                            {prediction.uplift}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expanded Details */}
-                    {selectedPrediction?.id === prediction.id && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm font-medium mb-2">Top Value Drivers</p>
-                            <div className="space-y-1">
-                              {prediction.topDrivers.slice(0, 3).map((driver, idx) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-primary rounded-full" />
-                                  <span className="text-sm text-muted-foreground">{driver}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-sm font-medium mb-2">Revenue Impact</p>
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Total Predicted Revenue:</span>
-                                <span className="font-medium">${(prediction.predictedLTV90d * prediction.cohortSize).toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Revenue per Player:</span>
-                                <span className="font-medium">${prediction.predictedLTV90d}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="drivers" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Value Drivers Analysis</CardTitle>
-              <CardDescription>Key factors influencing LTV predictions across all cohorts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {driverAnalysis.map((driver, index) => (
-                  <div key={index} className="p-4 border border-border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${
-                          driver.direction === 'positive' ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
-                        <h4 className="font-medium text-foreground">{driver.driver}</h4>
-                        <Badge variant="outline" className="text-xs">
-                          {driver.direction === 'positive' ? '+' : ''}{Math.round(driver.impact * 100)}%
-                        </Badge>
-                      </div>
-                      {driver.direction === 'positive' ? (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-red-600" />
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{driver.description}</p>
-                    <div className="mt-2">
-                      <Progress 
-                        value={Math.abs(driver.impact) * 100} 
-                        className={`h-2 ${driver.direction === 'positive' ? '[&>div]:bg-green-500' : '[&>div]:bg-red-500'}`}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="comparison" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cohort Comparison</CardTitle>
-              <CardDescription>Compare LTV predictions across different player segments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">Comparison Chart Coming Soon</h3>
-                <p className="text-muted-foreground">
-                  Interactive cohort comparison visualization will be available here
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Key Insights */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Key Insights</CardTitle>
+          <CardDescription>
+            Summary of prediction results and recommendations
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <h4 className="font-medium text-green-600">Positive Indicators</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• High survival probability in first week</li>
+                <li>• Consistent daily revenue patterns</li>
+                <li>• Strong cohort engagement metrics</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium text-orange-600">Areas of Concern</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Revenue decline after day 14</li>
+                <li>• Lower confidence in long-term predictions</li>
+                <li>• Seasonal variation in engagement</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium text-blue-600">Recommendations</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Focus on week 2 retention campaigns</li>
+                <li>• Optimize monetization for days 15-30</li>
+                <li>• A/B test engagement features</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-};
+}
