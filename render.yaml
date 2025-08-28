@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: levelup-ai-33-separate
+    env: node
+    plan: free
+    buildCommand: |
+      npm ci
+      npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20 
