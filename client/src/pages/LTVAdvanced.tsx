@@ -98,16 +98,18 @@ export default function LTVAdvanced() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="builder">Builder</TabsTrigger>
+          <TabsTrigger value="cohort-builder">Cohort Builder</TabsTrigger>
+          <TabsTrigger value="model-config">Model Config</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
+          <TabsTrigger value="export">Export</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {/* Performance Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -133,35 +135,9 @@ export default function LTVAdvanced() {
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Revenue Impact</p>
-                    <p className="text-2xl font-bold text-foreground">$2.8M</p>
-                    <p className="text-xs text-success mt-1">LTV-driven</p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-success" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Predictions at Risk</p>
-                    <p className="text-2xl font-bold text-foreground">2</p>
-                    <p className="text-xs text-warning mt-1">Needs attention</p>
-                  </div>
-                  <AlertCircle className="w-8 h-8 text-warning" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* System Alerts Section - Fills the empty space */}
+          {/* System Alerts Section - Fixed Design Scheme */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Alerts Card */}
             <Card>
@@ -175,12 +151,12 @@ export default function LTVAdvanced() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-start gap-3 p-3 border rounded-lg border-orange-200 bg-orange-50">
+                <div className="flex items-start gap-3 p-3 border rounded-lg border-orange-200/20 bg-orange-950/20">
                   <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm">Tag Performance Alert</h4>
-                      <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-200">
+                      <Badge className="text-xs bg-orange-500/20 text-orange-300 border-orange-500/30">
                         Medium
                       </Badge>
                     </div>
@@ -193,12 +169,12 @@ export default function LTVAdvanced() {
                   </div>
                 </div>
                 
-                <div className="flex items-start gap-3 p-3 border rounded-lg border-red-200 bg-red-50">
+                <div className="flex items-start gap-3 p-3 border rounded-lg border-red-200/20 bg-red-950/20">
                   <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm">Data Quality Issue</h4>
-                      <Badge className="text-xs bg-red-100 text-red-800 border-red-200">
+                      <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
                         High
                       </Badge>
                     </div>
@@ -211,12 +187,12 @@ export default function LTVAdvanced() {
                   </div>
                 </div>
                 
-                <div className="flex items-start gap-3 p-3 border rounded-lg border-blue-200 bg-blue-50">
+                <div className="flex items-start gap-3 p-3 border rounded-lg border-blue-200/20 bg-blue-950/20">
                   <CheckCircle className="w-5 h-5 text-blue-500 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm">Model Update Available</h4>
-                      <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200">
+                      <Badge className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
                         Low
                       </Badge>
                     </div>
@@ -241,12 +217,8 @@ export default function LTVAdvanced() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button variant="outline" className="w-full justify-start">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Validate All Tags
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
                   <TrendingUp className="w-4 h-4 mr-2" />
-                  View Model Performance
+                  View Detailed Model Performance
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <AlertCircle className="w-4 h-4 mr-2" />
@@ -303,16 +275,109 @@ export default function LTVAdvanced() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="builder" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LTVCohortBuilder />
-            <LTVPredictionBuilder />
-          </div>
+        <TabsContent value="cohort-builder" className="space-y-6">
+          <LTVCohortBuilder />
+        </TabsContent>
+
+        <TabsContent value="model-config" className="space-y-6">
           <LTVModelConfig />
         </TabsContent>
 
         <TabsContent value="results" className="space-y-6">
           <LTVResults predictions={samplePredictions} />
+        </TabsContent>
+
+        <TabsContent value="export" className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold">Export & Integration</h2>
+            <p className="text-muted-foreground">
+              Export your LTV predictions and configure automation
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Data Exports */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Data Exports</CardTitle>
+                <CardDescription>
+                  Export your LTV predictions and cohort data
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-medium text-sm">Export Cohort Data</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Download user IDs and features for your cohort
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Export CSV
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-medium text-sm">Export LTV Predictions</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Download aggregated forecasts and confidence intervals
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Export JSON
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Scheduling & Automation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Scheduling & Automation</CardTitle>
+                <CardDescription>
+                  Configure automated prediction runs and alerts
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-medium text-sm">Schedule Prediction for Cohort</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Set up recurring LTV predictions for your cohort
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Configure
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-medium text-sm">Create Alerts for LTV Predictions</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Set up notifications for significant LTV changes
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Configure
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">

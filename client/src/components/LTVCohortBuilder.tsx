@@ -4,267 +4,207 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Users, 
-  Plus, 
-  X, 
-  Target,
-  Filter,
-  Sparkles
-} from "lucide-react";
+import { Plus, X, Users, Target, Filter } from "lucide-react";
 
 interface CohortRule {
   id: string;
   field: string;
   operator: string;
   value: string;
-  type: "attribute" | "event";
 }
 
-const sampleAttributes = [
-  { value: "country", label: "Country", type: "attribute" },
-  { value: "acquisition_channel", label: "Acquisition Channel", type: "attribute" },
-  { value: "xp_level", label: "XP Level", type: "attribute" },
-  { value: "total_sessions", label: "Total Sessions", type: "attribute" },
-  { value: "total_iap_revenue", label: "Total IAP Revenue", type: "attribute" },
-];
-
-const sampleEvents = [
-  { value: "tutorial_complete", label: "Tutorial Complete", type: "event" },
-  { value: "first_purchase", label: "First Purchase", type: "event" },
-  { value: "level_fail", label: "Level Fail", type: "event" },
-  { value: "support_ticket", label: "Support Ticket", type: "event" },
-  { value: "social_connect", label: "Social Connect", type: "event" },
-];
-
-const operators = [
-  { value: "equals", label: "Equals" },
-  { value: "not_equals", label: "Not Equals" },
-  { value: "greater_than", label: "Greater Than" },
-  { value: "less_than", label: "Less Than" },
-  { value: "contains", label: "Contains" },
-  { value: "in", label: "In" },
-];
-
-export const LTVCohortBuilder = () => {
+export function LTVCohortBuilder() {
   const [cohortName, setCohortName] = useState("");
-  const [includeRules, setIncludeRules] = useState<CohortRule[]>([
-    { id: "1", field: "", operator: "", value: "", type: "attribute" }
-  ]);
-  const [excludeRules, setExcludeRules] = useState<CohortRule[]>([]);
-  const [estimatedSize, setEstimatedSize] = useState(45600);
+  const [rules, setRules] = useState<CohortRule[]>([]);
+  const [excludeTestUsers, setExcludeTestUsers] = useState(true);
+  const [estimatedSize, setEstimatedSize] = useState(0);
 
-  const addRule = (type: "include" | "exclude") => {
-    const newRule: CohortRule = {
-      id: Math.random().toString(36).substr(2, 9),
-      field: "",
-      operator: "",
-      value: "",
-      type: "attribute"
-    };
-
-    if (type === "include") {
-      setIncludeRules([...includeRules, newRule]);
-    } else {
-      setExcludeRules([...excludeRules, newRule]);
-    }
-  };
-
-  const removeRule = (id: string, type: "include" | "exclude") => {
-    if (type === "include") {
-      setIncludeRules(includeRules.filter(rule => rule.id !== id));
-    } else {
-      setExcludeRules(excludeRules.filter(rule => rule.id !== id));
-    }
-  };
-
-  const updateRule = (id: string, field: keyof CohortRule, value: string, type: "include" | "exclude") => {
-    const updateRules = (rules: CohortRule[]) =>
-      rules.map(rule => rule.id === id ? { ...rule, [field]: value } : rule);
-
-    if (type === "include") {
-      setIncludeRules(updateRules(includeRules));
-    } else {
-      setExcludeRules(updateRules(excludeRules));
-    }
-  };
-
-  const suggestedCohorts = [
-    "High spenders from last week",
-    "Players stuck at level 12", 
-    "Tutorial completers, no purchase",
-    "Social connectors with 3+ sessions",
-    "Churned players from Facebook ads"
+  const availableFields = [
+    { value: "total_sessions", label: "Total Sessions", type: "number" },
+    { value: "total_iap_spend", label: "Total IAP Spend", type: "currency" },
+    { value: "platform", label: "Platform", type: "select" },
+    { value: "region", label: "Region", type: "select" },
+    { value: "user_type", label: "User Type", type: "select" },
+    { value: "feature_usage", label: "Feature Usage", type: "select" },
+    { value: "engagement_pattern", label: "Engagement Pattern", type: "select" },
+    { value: "purchase_history", label: "Purchase History", type: "select" }
   ];
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Target className="w-5 h-5" />
-          LTV Cohort Definition
-        </CardTitle>
-        <CardDescription>
-          Define the player audience for LTV prediction using attributes and events
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Cohort Name */}
-        <div className="space-y-2">
-          <Label htmlFor="cohortName">Cohort Name</Label>
+  const operators = [
+    { value: "gt", label: "Greater than" },
+    { value: "gte", label: "Greater than or equal" },
+    { value: "lt", label: "Less than" },
+    { value: "lte", label: "Less than or equal" },
+    { value: "eq", label: "Equals" },
+    { value: "ne", label: "Not equals" },
+    { value: "contains", label: "Contains" },
+    { value: "in", label: "In list" }
+  ];
+
+  const addRule = () => {
+    const newRule: CohortRule = {
+      id: Date.now().toString(),
+      field: "",
+      operator: "",
+      value: ""
+    };
+    setRules([...rules, newRule]);
+  };
+
+  const removeRule = (id: string) => {
+    setRules(rules.filter(rule => rule.id !== id));
+  };
+
+  const updateRule = (id: string, field: keyof CohortRule, value: string) => {
+    setRules(rules.map(rule => 
+      rule.id === id ? { ...rule, [field]: value } : rule
+    ));
+  };
+
+  const getFieldType = (fieldValue: string) => {
+    return availableFields.find(f => f.value === fieldValue)?.type || "text";
+  };
+
+  const renderValueInput = (rule: CohortRule) => {
+    const fieldType = getFieldType(rule.field);
+    
+    switch (fieldType) {
+      case "select":
+        return (
+          <Select value={rule.value} onValueChange={(value) => updateRule(rule.id, "value", value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Value" />
+            </SelectTrigger>
+            <SelectContent>
+              {rule.field === "platform" && (
+                <>
+                  <SelectItem value="ios">iOS</SelectItem>
+                  <SelectItem value="android">Android</SelectItem>
+                  <SelectItem value="web">Web</SelectItem>
+                </>
+              )}
+              {rule.field === "region" && (
+                <>
+                  <SelectItem value="na">North America</SelectItem>
+                  <SelectItem value="eu">Europe</SelectItem>
+                  <SelectItem value="apac">Asia Pacific</SelectItem>
+                </>
+              )}
+              {rule.field === "user_type" && (
+                <>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="returning">Returning</SelectItem>
+                  <SelectItem value="veteran">Veteran</SelectItem>
+                </>
+              )}
+            </SelectContent>
+          </Select>
+        );
+      case "currency":
+        return (
           <Input
-            id="cohortName"
-            placeholder="e.g., US Facebook High-Value Prospects"
-            value={cohortName}
-            onChange={(e) => setCohortName(e.target.value)}
+            type="number"
+            placeholder="0.00"
+            value={rule.value}
+            onChange={(e) => updateRule(rule.id, "value", e.target.value)}
+            className="w-32"
           />
-        </div>
+        );
+      case "number":
+        return (
+          <Input
+            type="number"
+            placeholder="0"
+            value={rule.value}
+            onChange={(e) => updateRule(rule.id, "value", e.target.value)}
+            className="w-32"
+          />
+        );
+      default:
+        return (
+          <Input
+            placeholder="Enter value"
+            value={rule.value}
+            onChange={(e) => updateRule(rule.id, "value", e.target.value)}
+            className="w-32"
+          />
+        );
+    }
+  };
 
-        {/* Include Rules */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-medium">Include Players Where</Label>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => addRule("include")}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Rule
-            </Button>
-          </div>
+  const validateCohort = () => {
+    // Mock validation - in real implementation, this would call your backend
+    const validRules = rules.filter(rule => rule.field && rule.operator && rule.value);
+    if (validRules.length === 0) return;
+    
+    // Mock estimated size calculation
+    const baseSize = 5000;
+    const ruleMultiplier = 0.8;
+    const estimated = Math.floor(baseSize * Math.pow(ruleMultiplier, validRules.length));
+    setEstimatedSize(estimated);
+  };
 
-          <div className="space-y-3">
-            {includeRules.map((rule, index) => (
-              <div key={rule.id} className="flex items-center gap-3 p-3 border border-border rounded-lg">
-                {index > 0 && (
-                  <Badge variant="secondary" className="text-xs">AND</Badge>
-                )}
-                
-                <Select 
-                  value={rule.field} 
-                  onValueChange={(value) => updateRule(rule.id, "field", value, "include")}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="p-2">
-                      <p className="text-xs text-muted-foreground mb-2">Player Attributes</p>
-                      {sampleAttributes.map((attr) => (
-                        <SelectItem key={attr.value} value={attr.value}>
-                          {attr.label}
-                        </SelectItem>
-                      ))}
-                    </div>
-                    <Separator />
-                    <div className="p-2">
-                      <p className="text-xs text-muted-foreground mb-2">Player Events</p>
-                      {sampleEvents.map((event) => (
-                        <SelectItem key={event.value} value={event.value}>
-                          {event.label}
-                        </SelectItem>
-                      ))}
-                    </div>
-                  </SelectContent>
-                </Select>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Cohort Definition Builder</h2>
+        <p className="text-muted-foreground">
+          Define the player audience for LTV prediction using attributes and events
+        </p>
+      </div>
 
-                <Select 
-                  value={rule.operator} 
-                  onValueChange={(value) => updateRule(rule.id, "operator", value, "include")}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Operator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {operators.map((op) => (
-                      <SelectItem key={op.value} value={op.value}>
-                        {op.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Cohort Definition */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Cohort Name */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Cohort Name</CardTitle>
+              <CardDescription>
+                Give your cohort a descriptive name for easy identification
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                placeholder="e.g., US Facebook High-Value Prospects"
+                value={cohortName}
+                onChange={(e) => setCohortName(e.target.value)}
+                className="w-full"
+              />
+            </CardContent>
+          </Card>
 
-                <Input
-                  placeholder="Value"
-                  value={rule.value}
-                  onChange={(e) => updateRule(rule.id, "value", e.target.value, "include")}
-                  className="flex-1"
-                />
-
-                {includeRules.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeRule(rule.id, "include")}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Exclude Rules */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-medium">Exclude Players Where</Label>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => addRule("exclude")}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Exclusion
-            </Button>
-          </div>
-
-          {excludeRules.length > 0 && (
-            <div className="space-y-3">
-              {excludeRules.map((rule, index) => (
-                <div key={rule.id} className="flex items-center gap-3 p-3 border border-destructive/20 rounded-lg bg-destructive/5">
-                  {index > 0 && (
-                    <Badge variant="outline" className="text-xs">AND</Badge>
-                  )}
-                  
-                  <Select 
-                    value={rule.field} 
-                    onValueChange={(value) => updateRule(rule.id, "field", value, "exclude")}
-                  >
-                    <SelectTrigger className="w-48">
+          {/* Include Players Where */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                Include Players Where
+              </CardTitle>
+              <CardDescription>
+                Define inclusion criteria for your cohort
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {rules.map((rule) => (
+                <div key={rule.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <Select value={rule.field} onValueChange={(value) => updateRule(rule.id, "field", value)}>
+                    <SelectTrigger className="w-40">
                       <SelectValue placeholder="Select field" />
                     </SelectTrigger>
                     <SelectContent>
-                      <div className="p-2">
-                        <p className="text-xs text-muted-foreground mb-2">Player Attributes</p>
-                        {sampleAttributes.map((attr) => (
-                          <SelectItem key={attr.value} value={attr.value}>
-                            {attr.label}
-                          </SelectItem>
-                        ))}
-                      </div>
-                      <Separator />
-                      <div className="p-2">
-                        <p className="text-xs text-muted-foreground mb-2">Player Events</p>
-                        {sampleEvents.map((event) => (
-                          <SelectItem key={event.value} value={event.value}>
-                            {event.label}
-                          </SelectItem>
-                        ))}
-                      </div>
+                      {availableFields.map((field) => (
+                        <SelectItem key={field.value} value={field.value}>
+                          {field.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
 
-                  <Select 
-                    value={rule.operator} 
-                    onValueChange={(value) => updateRule(rule.id, "operator", value, "exclude")}
-                  >
-                    <SelectTrigger className="w-40">
+                  <Select value={rule.operator} onValueChange={(value) => updateRule(rule.id, "operator", value)}>
+                    <SelectTrigger className="w-32">
                       <SelectValue placeholder="Operator" />
                     </SelectTrigger>
                     <SelectContent>
@@ -276,61 +216,117 @@ export const LTVCohortBuilder = () => {
                     </SelectContent>
                   </Select>
 
-                  <Input
-                    placeholder="Value"
-                    value={rule.value}
-                    onChange={(e) => updateRule(rule.id, "value", e.target.value, "exclude")}
-                    className="flex-1"
-                  />
+                  {renderValueInput(rule)}
 
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeRule(rule.id, "exclude")}
+                    onClick={() => removeRule(rule.id)}
+                    className="text-destructive hover:text-destructive"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
 
-        {/* Estimated Size */}
-        <div className="p-4 bg-accent/30 border border-primary/20 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              <span className="font-medium">Estimated Cohort Size</span>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary">{estimatedSize.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">players</p>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Suggestions */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <Label className="text-sm font-medium">AI Suggested Cohorts</Label>
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            {suggestedCohorts.map((suggestion, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                className="justify-start h-auto p-3 text-left"
-                onClick={() => setCohortName(suggestion)}
-              >
-                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">{suggestion}</span>
+              <Button variant="outline" onClick={addRule} className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Rule
               </Button>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
+
+          {/* Exclude Test Users */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Data Quality Settings</CardTitle>
+              <CardDescription>
+                Configure data quality filters for your cohort
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="exclude-test-users">Exclude Test Users</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Filter out test accounts and development users
+                  </p>
+                </div>
+                <Switch
+                  id="exclude-test-users"
+                  checked={excludeTestUsers}
+                  onCheckedChange={setExcludeTestUsers}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Right Column - Preview & Actions */}
+        <div className="space-y-6">
+          {/* Estimated Cohort Size */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Estimated Cohort Size
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary">
+                  {estimatedSize > 0 ? estimatedSize.toLocaleString() : "—"}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {estimatedSize > 0 ? "estimated players" : "Add rules to estimate"}
+                </p>
+              </div>
+              <Button 
+                onClick={validateCohort} 
+                className="w-full mt-4"
+                disabled={rules.length === 0}
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Estimate Size
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* AI Suggested Cohorts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">AI Suggested Cohorts</CardTitle>
+              <CardDescription>
+                Pre-defined cohorts based on common patterns
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                "High spenders from last week",
+                "Players stuck at level 12",
+                "Tutorial completers, no purchase"
+              ].map((suggestion, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`suggestion-${index}`}
+                    className="rounded"
+                  />
+                  <Label htmlFor={`suggestion-${index}`} className="text-sm">
+                    {suggestion}
+                  </Label>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Build Cohort Button */}
+          <Button className="w-full" size="lg">
+            <Target className="w-4 h-4 mr-2" />
+            Build Cohort
+          </Button>
+        </div>
+      </div>
+    </div>
   );
-};
+}

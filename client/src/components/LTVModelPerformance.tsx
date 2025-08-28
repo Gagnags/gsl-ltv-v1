@@ -1,149 +1,211 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { 
-  TrendingUp,
-  Target,
-  AlertCircle,
+  TrendingUp, 
+  Target, 
+  Brain,
   CheckCircle,
-  BarChart3,
-  Activity
+  AlertCircle,
+  Clock
 } from "lucide-react";
 
-const modelMetrics = [
-  { name: "Accuracy (MAPE)", value: 8.2, threshold: 10, status: "good", description: "Mean Absolute Percentage Error" },
-  { name: "Precision", value: 89.4, threshold: 85, status: "excellent", description: "True positive rate" },
-  { name: "Recall", value: 82.1, threshold: 80, status: "good", description: "Coverage of actual positives" },
-  { name: "R² Score", value: 91.7, threshold: 85, status: "excellent", description: "Variance explained by model" }
-];
+export function LTVModelPerformance() {
+  // Mock data based on the notebook analysis
+  const modelMetrics = [
+    {
+      name: "IAP Purchase Model",
+      accuracy: 89.4,
+      auc: 0.874,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "Subscription Model", 
+      accuracy: 76.2,
+      auc: 0.823,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "Ad Impression Model",
+      accuracy: 82.1,
+      auc: 0.791,
+      status: "active", 
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "Churn Model",
+      accuracy: 84.7,
+      auc: 0.856,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "Daily Retention Model",
+      accuracy: 78.9,
+      auc: 0.812,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "IAP Spend Model",
+      accuracy: 91.2,
+      auc: 0.893,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "Ad Revenue Model",
+      accuracy: 87.6,
+      auc: 0.845,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    },
+    {
+      name: "General Behavior Model",
+      accuracy: 81.3,
+      auc: 0.798,
+      status: "active",
+      lastUpdated: "2 hours ago"
+    }
+  ];
 
-const featureImportance = [
-  { feature: "Session Count (7d)", importance: 0.34, description: "Number of sessions in first week" },
-  { feature: "Total IAP Revenue", importance: 0.28, description: "In-app purchase spending" },
-  { feature: "Level Progression", importance: 0.19, description: "Levels completed vs time" },
-  { feature: "Tutorial Completion", importance: 0.11, description: "Onboarding completion status" },
-  { feature: "Platform", importance: 0.08, description: "iOS vs Android performance" }
-];
+  // Actual features from the notebook
+  const predictiveFeatures = [
+    { name: "Sessions (7d)", importance: 34, description: "Number of sessions in first week" },
+    { name: "Total IAP Revenue", importance: 28, description: "In-app purchase spending" },
+    { name: "Level Progression", importance: 19, description: "Levels completed vs time" },
+    { name: "Tutorial Completion", importance: 11, description: "Onboarding completion status" },
+    { name: "Platform", importance: 8, description: "iOS vs Android performance" }
+  ];
 
-const cohortAccuracy = [
-  { cohort: "High Spenders", accuracy: 94.2, sampleSize: 1240, confidence: "High" },
-  { cohort: "New Players", accuracy: 87.6, sampleSize: 15600, confidence: "High" },
-  { cohort: "Retention Risk", accuracy: 82.3, sampleSize: 3400, confidence: "Medium" },
-  { cohort: "Social Players", accuracy: 78.9, sampleSize: 890, confidence: "Medium" }
-];
+  const cohortAccuracy = [
+    { name: "High Spenders", accuracy: 94.2, sample: 1240, confidence: "high" },
+    { name: "New Players", accuracy: 87.6, sample: 15600, confidence: "high" },
+    { name: "Retention Risk", accuracy: 82.3, sample: 3400, confidence: "medium" },
+    { name: "Social Players", accuracy: 78.9, sample: 890, confidence: "medium" }
+  ];
 
-export const LTVModelPerformance = () => {
+  const getConfidenceColor = (confidence: string) => {
+    switch (confidence) {
+      case "high":
+        return "bg-green-500/20 text-green-700 border-green-500/30";
+      case "medium":
+        return "bg-yellow-500/20 text-yellow-700 border-yellow-500/30";
+      case "low":
+        return "bg-red-500/20 text-red-700 border-red-500/30";
+      default:
+        return "bg-gray-500/20 text-gray-700 border-gray-500/30";
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <BarChart3 className="w-6 h-6 text-primary" />
-          <div>
-            <CardTitle>Model Performance</CardTitle>
-            <CardDescription>Accuracy metrics and feature analysis</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Overall Metrics */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-foreground flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            Model Quality Metrics
-          </h4>
-          <div className="grid grid-cols-2 gap-4">
-            {modelMetrics.map((metric) => (
-              <div key={metric.name} className="p-3 border border-border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">{metric.name}</div>
-                  {metric.status === "excellent" ? (
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  ) : metric.status === "good" ? (
-                    <CheckCircle className="w-4 h-4 text-primary" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-warning" />
-                  )}
-                </div>
-                <div className="text-2xl font-bold text-foreground mb-1">
-                  {metric.value}%
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {metric.description}
-                </div>
-                <Progress value={metric.value} className="mt-2 h-1" />
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Model Performance</h2>
+        <p className="text-muted-foreground">
+          Accuracy metrics and feature analysis
+        </p>
+      </div>
 
-        {/* Feature Importance */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-foreground flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Top Predictive Features
-          </h4>
-          <div className="space-y-3">
-            {featureImportance.map((feature, index) => (
-              <div key={feature.feature} className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center text-xs font-bold text-primary">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium truncate">{feature.feature}</span>
-                    <span className="text-sm text-muted-foreground">{Math.round(feature.importance * 100)}%</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mb-2">{feature.description}</div>
-                  <Progress value={feature.importance * 100} className="h-1" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Cohort Performance */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-foreground flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            Accuracy by Cohort
-          </h4>
-          <div className="space-y-3">
-            {cohortAccuracy.map((cohort) => (
-              <div key={cohort.cohort} className="p-3 border border-border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-medium text-sm">{cohort.cohort}</div>
-                  <Badge variant={cohort.confidence === "High" ? "default" : "secondary"}>
-                    {cohort.confidence}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Model Quality Metrics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Model Quality Metrics</CardTitle>
+            <CardDescription>
+              Performance indicators for individual models
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {modelMetrics.map((model, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{model.name}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {model.status}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Accuracy: </span>
-                    <span className="font-semibold">{cohort.accuracy}%</span>
+                    <span className="text-muted-foreground">Accuracy:</span>
+                    <span className="ml-2 font-semibold">{model.accuracy}%</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Sample: </span>
-                    <span className="font-semibold">{cohort.sampleSize.toLocaleString()}</span>
+                    <span className="text-muted-foreground">AUC-ROC:</span>
+                    <span className="ml-2 font-semibold">{model.auc}</span>
                   </div>
                 </div>
-                <Progress value={cohort.accuracy} className="mt-2 h-1" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  {model.lastUpdated}
+                </div>
+                {index < modelMetrics.length - 1 && <div className="border-t pt-4" />}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Top Predictive Features */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Top Predictive Features</CardTitle>
+            <CardDescription>
+              Most important features for LTV prediction
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {predictiveFeatures.map((feature, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
+                    <span className="text-sm font-medium">{feature.name}</span>
+                  </div>
+                  <Badge variant="secondary">{feature.importance}%</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                <Progress value={feature.importance} className="h-2" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Accuracy by Cohort */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Accuracy by Cohort</CardTitle>
+          <CardDescription>
+            Model performance across different user segments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {cohortAccuracy.map((cohort, index) => (
+              <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{cohort.accuracy}%</div>
+                    <div className="text-sm text-muted-foreground">Accuracy</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold">{cohort.sample.toLocaleString()}</div>
+                    <div className="text-sm text-muted-foreground">Sample</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Progress value={cohort.accuracy} className="w-24 h-2" />
+                  <Badge className={getConfidenceColor(cohort.confidence)}>
+                    {cohort.confidence}
+                  </Badge>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Model Health Summary */}
-        <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="w-5 h-5 text-success" />
-            <h4 className="font-medium text-success">Model Health: Excellent</h4>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            All key metrics are within acceptable thresholds. Model is performing well across 
-            different player cohorts with high accuracy and reliable predictions.
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
-};
+}
