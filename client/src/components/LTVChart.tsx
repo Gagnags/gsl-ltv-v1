@@ -16,6 +16,9 @@ interface LTVChartProps {
   initialRange?: '14d' | '30d' | '60d';
   runData?: any;
   className?: string;
+  combinedChart?: boolean;
+  selectedMetric?: string;
+  selectedRange?: string;
 }
 
 export const LTVChart = ({ 
@@ -24,10 +27,13 @@ export const LTVChart = ({
   initialMetric = 'overall',
   initialRange = '30d',
   runData,
-  className = ""
+  className = "",
+  combinedChart = false,
+  selectedMetric,
+  selectedRange
 }: LTVChartProps) => {
-  const [metric, setMetric] = useState<'overall' | 'payer'>(initialMetric);
-  const [range, setRange] = useState<'14d' | '30d' | '60d'>(initialRange);
+  const [metric, setMetric] = useState<'overall' | 'payer'>(selectedMetric as 'overall' | 'payer' || initialMetric);
+  const [range, setRange] = useState<'14d' | '30d' | '60d'>(selectedRange as '14d' | '30d' | '60d' || initialRange);
   const [platform, setPlatform] = useState<string>('all');
   const [geo, setGeo] = useState<string>('all');
   const [tenure, setTenure] = useState<string>('all');
@@ -36,6 +42,12 @@ export const LTVChart = ({
   const [showConfidence, setShowConfidence] = useState(true);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any[]>([]);
+
+  // Update metric and range when props change
+  useEffect(() => {
+    if (selectedMetric) setMetric(selectedMetric as 'overall' | 'payer');
+    if (selectedRange) setRange(selectedRange as '14d' | '30d' | '60d');
+  }, [selectedMetric, selectedRange]);
 
   // Load user preferences from localStorage
   useEffect(() => {
@@ -52,41 +64,90 @@ export const LTVChart = ({
     localStorage.setItem('ltv.simple.prefs', JSON.stringify({ metric, range }));
   }, [metric, range]);
 
+  // Generate combined chart data (actual + predicted)
+  const generateCombinedData = () => {
+    const days = range === '14d' ? 14 : range === '30d' ? 30 : 60;
+    const actualDays = Math.floor(days * 0.7); // 70% actual, 30% predicted
+    const predictedDays = days - actualDays;
+    
+    const data = [];
+    
+    // Generate actual LTV data (always increasing)
+    let currentLTV = 2.5;
+    for (let i = 0; i < actualDays; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (actualDays - i));
+      data.push({
+        time: date.toLocaleDateString(),
+        actualLTV: currentLTV,
+        type: 'actual'
+      });
+      currentLTV += (Math.random() * 0.3) + 0.1; // Always increase
+    }
+    
+    // Generate predicted LTV data with confidence bands
+    let predictedLTV = currentLTV;
+    for (let i = 1; i <= predictedDays; i++) {
+      const confidenceWidth = i * 0.1; // Confidence bands diverge over time
+      const upperBound = predictedLTV + confidenceWidth + (Math.random() * 0.2);
+      const lowerBound = predictedLTV - confidenceWidth - (Math.random() * 0.2);
+      
+      data.push({
+        time: `${i}`,
+        predictedLTV: predictedLTV,
+        ciUpper: upperBound,
+        ciLower: lowerBound,
+        type: 'predicted'
+      });
+      
+      predictedLTV += (Math.random() * 0.4) + 0.2; // Always increase
+    }
+    
+    return data;
+  };
+
   // Fetch data when parameters change
   useEffect(() => {
     setLoading(true);
     
-    // Use run data if provided, otherwise fetch simple series
-    const seriesData = runData ? runData.chart.series : mockLTVData.getSimpleSeries(
-      metric, range, platform, geo, tenure, rank, overlays
-    ).series;
+    if (combinedChart) {
+      // Use combined chart data
+      const combinedData = generateCombinedData();
+      setData(combinedData);
+    } else {
+      // Use original logic
+      const seriesData = runData ? runData.chart.series : mockLTVData.getSimpleSeries(
+        metric, range, platform, geo, tenure, rank, overlays
+      ).series;
 
-    // Transform data for recharts
-    const transformedData = seriesData[0].points.map((point: any, index: number) => {
-      const dataPoint: any = {
-        time: point.t,
-        [seriesData[0].name]: point.y
-      };
+      // Transform data for recharts
+      const transformedData = seriesData[0].points.map((point: any, index: number) => {
+        const dataPoint: any = {
+          time: point.t,
+          [seriesData[0].name]: point.y
+        };
 
-      // Add confidence bands if available and enabled
-      if (showConfidence && seriesData[0].ciUpper && seriesData[0].ciLower) {
-        dataPoint.ciUpper = seriesData[0].ciUpper[index];
-        dataPoint.ciLower = seriesData[0].ciLower[index];
-      }
-
-      // Add overlay series
-      seriesData.slice(1).forEach((series: LTVSeries) => {
-        if (series.points[index]) {
-          dataPoint[series.name] = series.points[index].y;
+        // Add confidence bands if available and enabled
+        if (showConfidence && seriesData[0].ciUpper && seriesData[0].ciLower) {
+          dataPoint.ciUpper = seriesData[0].ciUpper[index];
+          dataPoint.ciLower = seriesData[0].ciLower[index];
         }
+
+        // Add overlay series
+        seriesData.slice(1).forEach((series: LTVSeries) => {
+          if (series.points[index]) {
+            dataPoint[series.name] = series.points[index].y;
+          }
+        });
+
+        return dataPoint;
       });
 
-      return dataPoint;
-    });
-
-    setData(transformedData);
+      setData(transformedData);
+    }
+    
     setLoading(false);
-  }, [metric, range, platform, geo, tenure, rank, overlays, showConfidence, runData]);
+  }, [metric, range, platform, geo, tenure, rank, overlays, showConfidence, runData, combinedChart]);
 
   const handleOverlayToggle = (overlay: string) => {
     setOverlays(prev => 
@@ -99,234 +160,280 @@ export const LTVChart = ({
   const getSeriesColor = (name: string) => {
     switch (name) {
       case 'Overall LTV':
-      case 'Predicted LTV':
-        return 'hsl(var(--primary))';
+      case 'actualLTV':
+        return '#3b82f6'; // Blue for actual
       case 'Payer LTV':
-        return 'hsl(var(--accent-cyan))';
-      case 'DAU':
-        return 'hsl(var(--success))';
-      case 'ARPU':
-        return 'hsl(var(--warning))';
-      case 'D30 Retention':
-        return 'hsl(var(--accent-purple))';
+      case 'predictedLTV':
+        return '#f97316'; // Orange for predicted
+      case 'ciUpper':
+      case 'ciLower':
+        return '#f97316'; // Orange for confidence bands
       default:
-        return 'hsl(var(--muted-foreground))';
+        return '#6b7280';
     }
   };
 
-  const primarySeries = runData ? 'Predicted LTV' : (metric === 'overall' ? 'Overall LTV' : 'Payer LTV');
-
-  return (
-    <Card className={className}>
-      {/* Controls */}
-      <div className="p-4 border-b border-border space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">LTV Trends</h3>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Metric Toggle */}
-          {!runData && (
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Metric:</Label>
-              <div className="flex bg-muted rounded-lg p-1">
-                <Button
-                  variant={metric === 'overall' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-7"
-                  onClick={() => setMetric('overall')}
-                >
-                  Overall LTV
-                </Button>
-                <Button
-                  variant={metric === 'payer' ? 'default' : 'ghost'}
-                  size="sm" 
-                  className="h-7"
-                  onClick={() => setMetric('payer')}
-                >
-                  Payer LTV
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Range Toggle */}
-          <div className="flex items-center gap-2">
-            <Label className="text-sm">Range:</Label>
-            <div className="flex bg-muted rounded-lg p-1">
-              {['14d', '30d', '60d'].map((r) => (
-                <Button
-                  key={r}
-                  variant={range === r ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-7"
-                  onClick={() => setRange(r as any)}
-                >
-                  {r}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Confidence Band Toggle */}
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={showConfidence}
-              onCheckedChange={setShowConfidence}
-              id="confidence"
+  // Render combined chart
+  if (combinedChart) {
+    return (
+      <div className={`w-full ${className}`}>
+        <ResponsiveContainer width="100%" height={400}>
+          <ComposedChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis 
+              dataKey="time" 
+              stroke="#9ca3af"
+              tick={{ fill: '#9ca3af' }}
             />
-            <Label htmlFor="confidence" className="text-sm">Confidence Band</Label>
-          </div>
-
-          {/* Overlay Controls */}
-          {showOverlays && (
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Combine with:</Label>
-              <div className="flex gap-2">
-                {['dau', 'arpu', 'retention'].map((overlay) => (
-                  <Button
-                    key={overlay}
-                    variant={overlays.includes(overlay) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleOverlayToggle(overlay)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    {overlay.toUpperCase()}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Filters */}
-        {showFilters && !runData && (
-          <div className="flex items-center gap-4 flex-wrap">
-            <Select value={platform} onValueChange={setPlatform}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Platform" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Platforms</SelectItem>
-                <SelectItem value="ios">iOS</SelectItem>
-                <SelectItem value="android">Android</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={geo} onValueChange={setGeo}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Regions</SelectItem>
-                <SelectItem value="na">North America</SelectItem>
-                <SelectItem value="eu">Europe</SelectItem>
-                <SelectItem value="apac">APAC</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={tenure} onValueChange={setTenure}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Tenure" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                <SelectItem value="new">New (&lt;7d)</SelectItem>
-                <SelectItem value="medium">7-30d</SelectItem>
-                <SelectItem value="veteran">Veteran (&gt;30d)</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={rank} onValueChange={setRank}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Game Rank" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Ranks</SelectItem>
-                <SelectItem value="top10">Top 10%</SelectItem>
-                <SelectItem value="mid">10-50%</SelectItem>
-                <SelectItem value="bottom">50%+</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </div>
-
-      {/* Chart */}
-      <div className="p-4">
-        {loading ? (
-          <div className="h-80 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" />
-              <YAxis stroke="hsl(var(--muted-foreground))" />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px'
-                }}
+            <YAxis 
+              stroke="#9ca3af"
+              tick={{ fill: '#9ca3af' }}
+              label={{ value: 'LTV ($)', angle: -90, position: 'insideLeft', fill: '#9ca3af' }}
+            />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: '#1f2937', 
+                border: '1px solid #374151',
+                borderRadius: '8px',
+                color: '#f9fafb'
+              }}
+            />
+            
+            {/* Confidence Interval Area */}
+            {showConfidence && (
+              <Area
+                dataKey="ciUpper"
+                stroke="none"
+                fill="#f97316"
+                fillOpacity={0.2}
+                strokeWidth={0}
               />
-              
-              {/* Confidence Band */}
-              {showConfidence && data[0]?.ciUpper && (
-                <Area
-                  dataKey="ciUpper"
-                  stroke="none"
-                  fill={getSeriesColor(primarySeries)}
-                  fillOpacity={0.1}
-                />
-              )}
+            )}
+            
+            {/* Actual LTV Line */}
+            <Line
+              type="monotone"
+              dataKey="actualLTV"
+              stroke="#3b82f6"
+              strokeWidth={3}
+              dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+              connectNulls={false}
+            />
+            
+            {/* Predicted LTV Line */}
+            <Line
+              type="monotone"
+              dataKey="predictedLTV"
+              stroke="#f97316"
+              strokeWidth={3}
+              strokeDasharray="5 5"
+              dot={{ fill: '#f97316', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: '#f97316', strokeWidth: 2 }}
+              connectNulls={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
 
-              {/* Main LTV Line */}
+  // Original chart rendering logic
+  return (
+    <div className={`w-full ${className}`}>
+      {showFilters && (
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="metric">Metric:</Label>
+              <Select value={metric} onValueChange={(value: 'overall' | 'payer') => setMetric(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overall">Overall LTV</SelectItem>
+                  <SelectItem value="payer">Payer LTV</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="range">Range:</Label>
+              <Select value={range} onValueChange={(value: '14d' | '30d' | '60d') => setRange(value)}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="14d">14d</SelectItem>
+                  <SelectItem value="30d">30d</SelectItem>
+                  <SelectItem value="60d">60d</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="platform">Platform:</Label>
+              <Select value={platform} onValueChange={setPlatform}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="ios">iOS</SelectItem>
+                  <SelectItem value="android">Android</SelectItem>
+                  <SelectItem value="web">Web</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="geo">Region:</Label>
+              <Select value={geo} onValueChange={setGeo}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="na">North America</SelectItem>
+                  <SelectItem value="eu">Europe</SelectItem>
+                  <SelectItem value="ap">Asia Pacific</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="tenure">Tenure:</Label>
+              <Select value={tenure} onValueChange={setTenure}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="returning">Returning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="rank">Rank:</Label>
+              <Select value={rank} onValueChange={setRank}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="bronze">Bronze</SelectItem>
+                  <SelectItem value="silver">Silver</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="confidence"
+                checked={showConfidence}
+                onCheckedChange={setShowConfidence}
+              />
+              <Label htmlFor="confidence">Show Confidence Bands</Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOverlays([])}
+                disabled={overlays.length === 0}
+              >
+                Clear Overlays
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Overlays:</span>
+            {['Cohort Comparison', 'Seasonal Trends', 'External Events'].map((overlay) => (
+              <Button
+                key={overlay}
+                variant={overlays.includes(overlay) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleOverlayToggle(overlay)}
+              >
+                {overlay}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <ResponsiveContainer width="100%" height={400}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <XAxis 
+            dataKey="time" 
+            stroke="#9ca3af"
+            tick={{ fill: '#9ca3af' }}
+          />
+          <YAxis 
+            stroke="#9ca3af"
+            tick={{ fill: '#9ca3af' }}
+            label={{ value: 'LTV ($)', angle: -90, position: 'insideLeft', fill: '#9ca3af' }}
+          />
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#1f2937', 
+              border: '1px solid #374151',
+              borderRadius: '8px',
+              color: '#f9fafb'
+            }}
+          />
+          
+          {/* Confidence bands */}
+          {showConfidence && data[0]?.ciUpper && data[0]?.ciLower && (
+            <>
               <Line
                 type="monotone"
-                dataKey={primarySeries}
-                stroke={getSeriesColor(primarySeries)}
-                strokeWidth={2}
+                dataKey="ciUpper"
+                stroke="#f97316"
+                strokeWidth={1}
+                strokeDasharray="3 3"
                 dot={false}
+                connectNulls={false}
               />
+              <Line
+                type="monotone"
+                dataKey="ciLower"
+                stroke="#f97316"
+                strokeWidth={1}
+                strokeDasharray="3 3"
+                dot={false}
+                connectNulls={false}
+              />
+            </>
+          )}
+          
+          {/* Main LTV line */}
+          <Line
+            type="monotone"
+            dataKey={data[0] ? Object.keys(data[0]).find(key => key !== 'time' && key !== 'ciUpper' && key !== 'ciLower') : 'value'}
+            stroke={getSeriesColor('Overall LTV')}
+            strokeWidth={3}
+            dot={{ fill: getSeriesColor('Overall LTV'), strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6, stroke: getSeriesColor('Overall LTV'), strokeWidth: 2 }}
+            connectNulls={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
 
-              {/* Overlay Lines */}
-              {overlays.map((overlay) => {
-                const name = overlay === 'dau' ? 'DAU' : overlay === 'arpu' ? 'ARPU' : 'D30 Retention';
-                return (
-                  <Line
-                    key={overlay}
-                    type="monotone"
-                    dataKey={name}
-                    stroke={getSeriesColor(name)}
-                    strokeWidth={1}
-                    strokeDasharray="5 5"
-                    dot={false}
-                  />
-                );
-              })}
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-
-        {/* Chart Footer */}
-        {runData && (
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border">
-            <Badge variant="secondary">
-              Cohort Size: {runData.cohortSize.toLocaleString()}
-            </Badge>
-            <Badge variant="outline">
-              {runData.freshness}
-            </Badge>
-          </div>
-        )}
-      </div>
-    </Card>
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading chart data...</span>
+        </div>
+      )}
+    </div>
   );
 };
