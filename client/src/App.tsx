@@ -16,6 +16,7 @@ import SQLQuery from "./pages/SQLQuery";
 import SupportSystem from "./components/SupportSystem";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import DataLayerLTV from "./pages/DataLayerLTV";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/sql-query" component={SQLQuery} />
             <Route path="/support" component={() => <SupportSystem />} />
             <Route path="/settings" component={Settings} />
+            <Route path="/data-layer/ltv" component={DataLayerLTV} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

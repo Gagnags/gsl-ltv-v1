@@ -25,7 +25,7 @@ const navItems = [
   { name: "Players", href: "/players", icon: Users },
   { name: "Settings", href: "#", icon: Settings },
   { name: "Integrated Games", href: "#", icon: Gamepad2 },
-  { name: "Data Layer", href: "#", icon: Layers },
+  { name: "Data Layer - LTV", href: "/data-layer/ltv", icon: Layers },
   { name: "User Profile", href: "#", icon: User },
 ];
 
