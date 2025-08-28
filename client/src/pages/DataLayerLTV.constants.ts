@@ -10,6 +10,13 @@ export type EventCategory =
 
 export type EventSubcategory = string;
 
+export type ValueType = "String" | "Int" | "Float" | "Date" | "String(optional)";
+
+export interface PayloadDefinition {
+  name: string;
+  valueType: ValueType;
+}
+
 export const CATEGORY_TO_SUBCATEGORIES: Record<EventCategory, EventSubcategory[]> = {
   "Sessions & Activity": [
     "session_started",
@@ -67,106 +74,225 @@ export const CATEGORY_TO_SUBCATEGORIES: Record<EventCategory, EventSubcategory[]
   Other: [],
 };
 
-export const SUBCATEGORY_TO_PAYLOADS: Record<string, string[]> = {
-  session_started: ["session_id"],
-  session_ended: ["session_id", "session_duration_seconds"],
-  app_open: ["source"],
-  app_uninstall: ["device_id"],
-  game_completed: ["game_id", "game_type", "duration_seconds", "outcome"],
-  level_progressed: ["progress_node_id", "progress_type", "delta"],
-  feature_used: ["feature_name", "interaction_type"],
-  guild_joined: ["guild_id", "guild_size", "guild_level"],
-  guild_left: ["guild_id", "leave_reason"],
-  chat_sent: ["channel", "length"],
-  friend_added: ["friend_id"],
+export const SUBCATEGORY_TO_PAYLOADS: Record<string, PayloadDefinition[]> = {
+  session_started: [{ name: "session_id", valueType: "String" }],
+  session_ended: [
+    { name: "session_id", valueType: "String" },
+    { name: "session_duration_seconds", valueType: "Int" }
+  ],
+  app_open: [{ name: "source", valueType: "String" }],
+  app_uninstall: [{ name: "device_id", valueType: "String" }],
+  game_completed: [
+    { name: "game_id", valueType: "String" },
+    { name: "game_type", valueType: "String" },
+    { name: "duration_seconds", valueType: "Int" },
+    { name: "outcome", valueType: "String" }
+  ],
+  level_progressed: [
+    { name: "progress_node_id", valueType: "String" },
+    { name: "progress_type", valueType: "String" },
+    { name: "delta", valueType: "Int" }
+  ],
+  feature_used: [
+    { name: "feature_name", valueType: "String" },
+    { name: "interaction_type", valueType: "String" }
+  ],
+  guild_joined: [
+    { name: "guild_id", valueType: "String" },
+    { name: "guild_size", valueType: "Int" },
+    { name: "guild_level", valueType: "Int" }
+  ],
+  guild_left: [
+    { name: "guild_id", valueType: "String" },
+    { name: "leave_reason", valueType: "String" }
+  ],
+  chat_sent: [
+    { name: "channel", valueType: "String" },
+    { name: "length", valueType: "Int" }
+  ],
+  friend_added: [{ name: "friend_id", valueType: "String" }],
   subscription_billed: [
-    "plan_id",
-    "subscription_term",
-    "renewal_count",
-    "gross_revenue",
-    "platform_fee",
-    "taxes",
-    "net_revenue",
-    "payment_provider",
-    "transaction_id",
-    "billing_cycle_start",
-    "billing_cycle_end",
+    { name: "plan_id", valueType: "String" },
+    { name: "subscription_term", valueType: "String" },
+    { name: "renewal_count", valueType: "Int" },
+    { name: "gross_revenue", valueType: "Float" },
+    { name: "platform_fee", valueType: "Float" },
+    { name: "taxes", valueType: "Float" },
+    { name: "net_revenue", valueType: "Float" },
+    { name: "payment_provider", valueType: "String" },
+    { name: "transaction_id", valueType: "String" },
+    { name: "billing_cycle_start", valueType: "Date" },
+    { name: "billing_cycle_end", valueType: "Date" }
   ],
   subscription_plan_changed: [
-    "previous_plan_id",
-    "new_plan_id",
-    "change_type",
-    "new_term_net_revenue",
+    { name: "previous_plan_id", valueType: "String" },
+    { name: "new_plan_id", valueType: "String" },
+    { name: "change_type", valueType: "String" },
+    { name: "new_term_net_revenue", valueType: "Float" }
   ],
-  subscription_cancel_intent: ["days_until_renewal"],
+  subscription_cancel_intent: [{ name: "days_until_renewal", valueType: "Int" }],
   subscription_churned_voluntary: [
-    "plan_id",
-    "subscription_lifetime_days",
-    "reason_for_leaving",
+    { name: "plan_id", valueType: "String" },
+    { name: "subscription_lifetime_days", valueType: "Int" },
+    { name: "reason_for_leaving", valueType: "String(optional)" }
   ],
   subscription_churned_involuntary: [
-    "plan_id",
-    "subscription_lifetime_days",
-    "final_failure_reason_code",
+    { name: "plan_id", valueType: "String" },
+    { name: "subscription_lifetime_days", valueType: "Int" },
+    { name: "final_failure_reason_code", valueType: "String" }
   ],
-  trial_started: ["trial_id", "trial_term"],
-  trial_converted: ["plan_id", "subscription_term", "net_revenue"],
-  trial_cancelled: ["trial_id", "cancel_reason"],
-  payment_retry_attempted: ["attempt_number", "failure_reason"],
-  payment_retry_success: ["attempt_number", "amount_net"],
+  trial_started: [
+    { name: "trial_id", valueType: "String" },
+    { name: "trial_term", valueType: "String" }
+  ],
+  trial_converted: [
+    { name: "plan_id", valueType: "String" },
+    { name: "subscription_term", valueType: "String" },
+    { name: "net_revenue", valueType: "Float" }
+  ],
+  trial_cancelled: [
+    { name: "trial_id", valueType: "String" },
+    { name: "cancel_reason", valueType: "String" }
+  ],
+  payment_retry_attempted: [
+    { name: "attempt_number", valueType: "Int" },
+    { name: "failure_reason", valueType: "String" }
+  ],
+  payment_retry_success: [
+    { name: "attempt_number", valueType: "Int" },
+    { name: "amount_net", valueType: "Float" }
+  ],
   "refund_issued / chargeback_received": [
-    "transaction_id",
-    "refund_amount_net",
-    "refund_reason",
+    { name: "transaction_id", valueType: "String" },
+    { name: "refund_amount_net", valueType: "Float" },
+    { name: "refund_reason", valueType: "String" }
   ],
-  iap_purchase_initiated: ["item_id", "item_category", "listed_price", "currency"],
+  iap_purchase_initiated: [
+    { name: "item_id", valueType: "String" },
+    { name: "item_category", valueType: "String" },
+    { name: "listed_price", valueType: "Float" },
+    { name: "currency", valueType: "String" }
+  ],
   iap_purchase_success: [
-    "item_id",
-    "item_category",
-    "gross_revenue",
-    "taxes",
-    "platform_fee",
-    "net_revenue",
-    "payment_provider",
-    "transaction_id",
+    { name: "item_id", valueType: "String" },
+    { name: "item_category", valueType: "String" },
+    { name: "gross_revenue", valueType: "Float" },
+    { name: "taxes", valueType: "Float" },
+    { name: "platform_fee", valueType: "Float" },
+    { name: "net_revenue", valueType: "Float" },
+    { name: "payment_provider", valueType: "String" },
+    { name: "transaction_id", valueType: "String" }
   ],
-  iap_purchase_failed: ["item_id", "failure_reason"],
+  iap_purchase_failed: [
+    { name: "item_id", valueType: "String" },
+    { name: "failure_reason", valueType: "String" }
+  ],
   "iap_refund_issued / chargeback_received": [
-    "transaction_id",
-    "refund_amount_net",
-    "refund_reason",
+    { name: "transaction_id", valueType: "String" },
+    { name: "refund_amount_net", valueType: "String" },
+    { name: "refund_reason", valueType: "String" }
   ],
   virtual_currency_purchased: [
-    "package_id",
-    "gross_revenue",
-    "net_revenue",
-    "amount_virtual_currency",
+    { name: "package_id", valueType: "String" },
+    { name: "gross_revenue", valueType: "Float" },
+    { name: "net_revenue", valueType: "Float" },
+    { name: "amount_virtual_currency", valueType: "Int" }
   ],
   virtual_currency_spent: [
-    "currency_type",
-    "amount_spent",
-    "item_id",
-    "item_category",
-    "current_balance",
+    { name: "currency_type", valueType: "String" },
+    { name: "amount_spent", valueType: "Int" },
+    { name: "item_id", valueType: "String" },
+    { name: "item_category", valueType: "String" },
+    { name: "current_balance", valueType: "Int" }
   ],
-  ad_impression: ["ad_unit_id", "ad_type", "placement", "revenue_per_impression"],
-  ad_click: ["ad_unit_id", "ad_type", "placement", "click_id"],
-  ad_reward_claimed: ["ad_unit_id", "reward_type", "reward_amount"],
-  ad_skipped: ["ad_unit_id", "ad_type", "skip_timestamp"],
+  ad_impression: [
+    { name: "ad_unit_id", valueType: "String" },
+    { name: "ad_type", valueType: "String" },
+    { name: "placement", valueType: "String" },
+    { name: "revenue_per_impression", valueType: "Float" }
+  ],
+  ad_click: [
+    { name: "ad_unit_id", valueType: "String" },
+    { name: "ad_type", valueType: "String" },
+    { name: "placement", valueType: "String" },
+    { name: "click_id", valueType: "String" }
+  ],
+  ad_reward_claimed: [
+    { name: "ad_unit_id", valueType: "String" },
+    { name: "reward_type", valueType: "String" },
+    { name: "reward_amount", valueType: "Int" }
+  ],
+  ad_skipped: [
+    { name: "ad_unit_id", valueType: "String" },
+    { name: "ad_type", valueType: "String" },
+    { name: "skip_timestamp", valueType: "Int" }
+  ],
   ad_revenue_reported: [
-    "ad_network",
-    "ad_unit_id",
-    "impressions",
-    "gross_revenue",
-    "net_revenue",
-    "currency",
+    { name: "ad_network", valueType: "String" },
+    { name: "ad_unit_id", valueType: "String" },
+    { name: "impressions", valueType: "Int" },
+    { name: "gross_revenue", valueType: "Float" },
+    { name: "net_revenue", valueType: "Float" },
+    { name: "currency", valueType: "String" }
   ],
-  support_ticket_created: ["ticket_id", "ticket_category", "severity"],
-  support_ticket_updated: ["ticket_id", "status", "resolution_code"],
-  account_created: ["method"],
-  account_deleted: ["reason"],
-  ban_issued: ["reason", "duration"],
-  compensation_credit: ["amount", "currency", "reason"],
+  support_ticket_created: [
+    { name: "ticket_id", valueType: "String" },
+    { name: "ticket_category", valueType: "String" },
+    { name: "severity", valueType: "String" }
+  ],
+  support_ticket_updated: [
+    { name: "ticket_id", valueType: "String" },
+    { name: "status", valueType: "String" },
+    { name: "resolution_code", valueType: "String" }
+  ],
+  account_created: [{ name: "method", valueType: "String" }],
+  account_deleted: [{ name: "reason", valueType: "String" }],
+  ban_issued: [
+    { name: "reason", valueType: "String" },
+    { name: "duration", valueType: "Int" }
+  ],
+  compensation_credit: [
+    { name: "amount", valueType: "Float" },
+    { name: "currency", valueType: "String" },
+    { name: "reason", valueType: "String" }
+  ],
 };
+
+// Sample GTM data for mock import
+export const SAMPLE_GTM_DATA: Array<{
+  tagName: string;
+  category: EventCategory;
+  subcategory: string;
+  payloads: PayloadDefinition[];
+}> = [
+  {
+    tagName: "gtm_subscription_billed",
+    category: "Subscription & Financials",
+    subcategory: "subscription_billed",
+    payloads: [
+      { name: "plan_id", valueType: "String" },
+      { name: "net_revenue", valueType: "Float" },
+      { name: "transaction_id", valueType: "String" }
+    ]
+  },
+  {
+    tagName: "gtm_game_completed",
+    category: "Core Gameplay Engagement",
+    subcategory: "game_completed",
+    payloads: [
+      { name: "game_id", valueType: "String" },
+      { name: "duration_seconds", valueType: "Int" },
+      { name: "outcome", valueType: "String" }
+    ]
+  },
+  {
+    tagName: "gtm_session_started",
+    category: "Sessions & Activity",
+    subcategory: "session_started",
+    payloads: [
+      { name: "session_id", valueType: "String" }
+    ]
+  }
+];
 
 export const DEFAULT_EVENT_TAGS_STORAGE_KEY = "ltv:dataLayer:eventTags"; 
