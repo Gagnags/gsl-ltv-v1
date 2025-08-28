@@ -41,7 +41,7 @@ const generateConfidenceBands = (points: { t: string; y: number }[], variance: n
 export const mockLTVData = {
   getSimpleSeries: (
     metric: 'overall' | 'payer' = 'overall',
-    range: '14d' | '30d' | '60d' = '30d',
+    range: '7d' | '14d' | '30d' | '60d' = '30d',
     platform?: string,
     geo?: string,
     tenure?: string,

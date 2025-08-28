@@ -13,7 +13,7 @@ interface LTVChartProps {
   showFilters?: boolean;
   showOverlays?: boolean;
   initialMetric?: 'overall' | 'payer';
-  initialRange?: '14d' | '30d' | '60d';
+  initialRange?: '7d' | '14d' | '30d' | '60d';
   runData?: any;
   className?: string;
   combinedChart?: boolean;
@@ -33,7 +33,7 @@ export const LTVChart = ({
   selectedRange
 }: LTVChartProps) => {
   const [metric, setMetric] = useState<'overall' | 'payer'>(selectedMetric as 'overall' | 'payer' || initialMetric);
-  const [range, setRange] = useState<'14d' | '30d' | '60d'>(selectedRange as '14d' | '30d' | '60d' || initialRange);
+  const [range, setRange] = useState<'7d' | '14d' | '30d' | '60d'>(selectedRange as '7d' | '14d' | '30d' | '60d' || initialRange);
   const [platform, setPlatform] = useState<string>('all');
   const [geo, setGeo] = useState<string>('all');
   const [tenure, setTenure] = useState<string>('all');
@@ -46,7 +46,7 @@ export const LTVChart = ({
   // Update metric and range when props change
   useEffect(() => {
     if (selectedMetric) setMetric(selectedMetric as 'overall' | 'payer');
-    if (selectedRange) setRange(selectedRange as '14d' | '30d' | '60d');
+    if (selectedRange) setRange(selectedRange as '7d' | '14d' | '30d' | '60d');
   }, [selectedMetric, selectedRange]);
 
   // Load user preferences from localStorage
@@ -66,7 +66,7 @@ export const LTVChart = ({
 
   // Generate combined chart data (actual + predicted)
   const generateCombinedData = () => {
-    const days = range === '14d' ? 14 : range === '30d' ? 30 : 60;
+    const days = range === '7d' ? 7 : range === '14d' ? 14 : range === '30d' ? 30 : 60;
     const actualDays = Math.floor(days * 0.7); // 70% actual, 30% predicted
     const predictedDays = days - actualDays;
     
@@ -78,7 +78,7 @@ export const LTVChart = ({
       const date = new Date();
       date.setDate(date.getDate() - (actualDays - i));
       data.push({
-        time: date.toLocaleDateString(),
+        time: date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }),
         actualLTV: currentLTV,
         type: 'actual'
       });
@@ -88,9 +88,9 @@ export const LTVChart = ({
     // Generate predicted LTV data with confidence bands
     let predictedLTV = currentLTV;
     for (let i = 1; i <= predictedDays; i++) {
-      const confidenceWidth = i * 0.1; // Confidence bands diverge over time
+      const confidenceWidth = i * 0.15; // Confidence bands diverge over time
       const upperBound = predictedLTV + confidenceWidth + (Math.random() * 0.2);
-      const lowerBound = predictedLTV - confidenceWidth - (Math.random() * 0.2);
+      const lowerBound = Math.max(0, predictedLTV - confidenceWidth - (Math.random() * 0.2)); // Ensure lower bound doesn't go below 0
       
       data.push({
         time: `${i}`,
@@ -183,11 +183,15 @@ export const LTVChart = ({
             <XAxis 
               dataKey="time" 
               stroke="#9ca3af"
-              tick={{ fill: '#9ca3af' }}
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              tickLine={{ stroke: '#4b5563' }}
+              axisLine={{ stroke: '#4b5563' }}
             />
             <YAxis 
               stroke="#9ca3af"
-              tick={{ fill: '#9ca3af' }}
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              tickLine={{ stroke: '#4b5563' }}
+              axisLine={{ stroke: '#4b5563' }}
               label={{ value: 'LTV ($)', angle: -90, position: 'insideLeft', fill: '#9ca3af' }}
             />
             <Tooltip 
@@ -199,15 +203,24 @@ export const LTVChart = ({
               }}
             />
             
-            {/* Confidence Interval Area */}
+            {/* Confidence Interval Area - Both Upper and Lower */}
             {showConfidence && (
-              <Area
-                dataKey="ciUpper"
-                stroke="none"
-                fill="#f97316"
-                fillOpacity={0.2}
-                strokeWidth={0}
-              />
+              <>
+                <Area
+                  dataKey="ciUpper"
+                  stroke="none"
+                  fill="#f97316"
+                  fillOpacity={0.1}
+                  strokeWidth={0}
+                />
+                <Area
+                  dataKey="ciLower"
+                  stroke="none"
+                  fill="#f97316"
+                  fillOpacity={0.1}
+                  strokeWidth={0}
+                />
+              </>
             )}
             
             {/* Actual LTV Line */}
@@ -221,7 +234,7 @@ export const LTVChart = ({
               connectNulls={false}
             />
             
-            {/* Predicted LTV Line */}
+            {/* Predicted LTV Line - Connected to Actual */}
             <Line
               type="monotone"
               dataKey="predictedLTV"
@@ -259,11 +272,12 @@ export const LTVChart = ({
 
             <div className="flex items-center gap-2">
               <Label htmlFor="range">Range:</Label>
-              <Select value={range} onValueChange={(value: '14d' | '30d' | '60d') => setRange(value)}>
+              <Select value={range} onValueChange={(value: '7d' | '14d' | '30d' | '60d') => setRange(value)}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="7d">7d</SelectItem>
                   <SelectItem value="14d">14d</SelectItem>
                   <SelectItem value="30d">30d</SelectItem>
                   <SelectItem value="60d">60d</SelectItem>

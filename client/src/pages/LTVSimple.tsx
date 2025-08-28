@@ -111,10 +111,18 @@ export default function LTVSimple() {
               <span className="text-sm font-medium">Range:</span>
               <div className="flex border rounded-lg">
                 <Button
+                  variant={selectedRange === "7d" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSelectedRange("7d")}
+                  className="rounded-r-none"
+                >
+                  7d
+                </Button>
+                <Button
                   variant={selectedRange === "14d" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setSelectedRange("14d")}
-                  className="rounded-r-none"
+                  className="rounded-l-none"
                 >
                   14d
                 </Button>
